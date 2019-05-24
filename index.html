@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Template • TodoMVC</title>
+	<link rel="stylesheet" href="node_modules/todomvc-common/base.css">
+	<link rel="stylesheet" href="node_modules/todomvc-app-css/index.css">
+	<!-- CSS overrides - remove if you don't need it -->
+	<link rel="stylesheet" href="css/app.css">
+	<style>
+		[v-cloak] {
+			display: none;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="app" v-cloak>
+		<section class="todoapp">
+			<header class="header">
+				<h1>{{title}}</h1>
+				<input class="new-todo" @keyup.enter="addTodos" placeholder="What needs to be done?" autofocus
+					v-model="newTarget">
+			</header>
+			<!-- This section should be hidden by default and shown when there are todos -->
+			<section class="main" v-show="todos.length">
+				<input id="toggle-all" @change="handlerToggleAll" v-model="toggleAll" class="toggle-all" type="checkbox">
+				<label for="toggle-all">Mark all as complete</label>
+				<ul class="todo-list">
+					<!-- These are here just to show the structure of the list items -->
+					<!-- List items should get the class `editing` when editing and `completed` when marked as completed -->
+					<li :class="{completed:todo.isCompleted,editing:showId==todo.id}" v-for="todo in showTodos" :key="todo.id">
+						<div class="view">
+							<input class="toggle" type="checkbox" v-model="todo.isCompleted">
+							<label @dblclick="isEdit(todo.id,$event)">{{todo.text}}</label>
+							<button class="destroy" @click="doDestroy(todo.id)"></button>
+						</div>
+						<input class="edit" v-model="todo.text" @keyup.enter="$event.target.blur"  @blur="doTodo" @keyup.esc="cancelTodo(todo)">
+					</li>
+					<!-- <li>
+							<div class="view">
+								<input class="toggle" type="checkbox">
+								<label>Buy a unicorn</label>
+								<button class="destroy"></button>
+							</div>
+							<input class="edit" value="Rule the web">
+						</li> -->
+				</ul>
+			</section>
+			<!-- This footer should hidden by default and shown when there are todos -->
+			<footer class="footer" v-show="todos.length">
+				<!-- This should be `0 items left` by default -->
+				<span class="todo-count"><strong>{{itemLeft}}</strong> item left</span>
+				<!-- Remove this if you don't implement routing -->
+				<ul class="filters">
+					<li>
+						<a :class="{selected:selectedType=='all'}" @click="changeType('all')" href="#/">All</a>
+					</li>
+					<li>
+						<a :class="{selected:selectedType=='active'}" @click="changeType('active')" href="#/active">Active</a>
+					</li>
+					<li>
+						<a :class="{selected:selectedType=='completed'}" @click="changeType('completed')" href="#/completed">Completed</a>
+					</li>
+				</ul>
+				<!-- Hidden if no completed items are left ↓ -->
+				<button class="clear-completed" @click="clearCompleted" v-show="itemLeft<todos.length">Clear completed</button>
+			</footer>
+		</section>
+		<footer class="info">
+			<p>Double-click to edit a todo</p>
+			<!-- Remove the below line ↓ -->
+			<p>Template by <a href="http://sindresorhus.com">Sindre Sorhus</a></p>
+			<!-- Change this out with your name and url ↓ -->
+			<p>Created by <a href="http://todomvc.com">you</a></p>
+			<p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
+		</footer>
+	</div>
+	<!-- Scripts here. Don't remove ↓ -->
+	<script src="node_modules/todomvc-common/base.js"></script>
+	<script src="js/app.js"></script>
+	<script src="node_modules/vue/dist/vue.js"></script>
+	<script src="node_modules/mockjs/dist/mock.js"></script>
+	<script>
+		var Random = Mock.Random;
+		// const DBKEY = 'todos';
+		var vm = new Vue({
+			el: '#app',
+			data: {
+				title: 'todos',
+				newTarget: '',
+				showId: '',
+				todos: [],
+				tempText: '',
+				toggleAll: false,
+				selectedType: 'all',
+				DBKEY: 'todos'
+			},
+			created() {
+				this.initTodos();
+			},
+			methods: {
+				addTodos() {
+					this.todos.push({
+						id: Random.guid(),
+						text: this.newTarget,
+						isCompleted: false
+					});
+					this.newTarget = '';
+				},
+				doTodo() {
+					this.showId = '';
+					this.tempText = '';
+				},
+				cancelTodo(todo) {
+					this.showId = '';
+					todo.text = this.tempText;
+				},
+				doDestroy(id) {
+					var index = -1;
+					// this.todos = this.todos.filter(item => item.id != id);
+					for(let i = 0; i< this.todos.length; i ++) {
+						if(this.todos[i].id==id) {
+							index = id;
+							break;
+						}
+					}
+					if(index != -1) {
+						this.todos.splice(index,1);
+					}
+				},
+				isEdit(id, e) {
+					this.tempText = '';
+					this.showId = id;
+					this.tempText = this.todos.find(item => item.id == id).text;
+					var focusEle = e.target.parentNode.nextElementSibling;
+					this.$nextTick(() => {
+						focusEle.focus();
+					})
+				},
+				handlerToggleAll() {
+					this.todos.map(item => {
+						item.isCompleted = this.toggleAll;
+					})
+				},
+				changeType(type) {
+					this.selectedType = type;
+				},
+				clearCompleted() {
+					this.todos = this.todos.filter(item=>!item.isCompleted);
+				},
+				initTodos() {
+					var todos = localStorage.getItem(this.DBKEY);
+					console.log(todos)
+					if(todos) {
+						this.todos = JSON.parse(todos);	
+					}else {
+						this.todos = [];
+						console.log('aaaa')
+					}
+					// console.log('======>',this.DBKEY);
+				}
+			},
+			computed: {
+				itemLeft() {
+					return this.todos.filter(item=>!item.isCompleted).length
+				},
+				showTodos() {
+					switch (this.selectedType) {
+						case 'all':
+							return this.todos;
+						case 'active':
+							return this.todos.filter(item=>!item.isCompleted);
+						case 'completed':
+							return this.todos.filter(item=>item.isCompleted);
+						default:
+						return this.todos;
+					}
+				}
+			},
+			watch: {
+				itemLeft(nv,ov) {
+						this.toggleAll = !nv;
+				},
+				// todos(nv,ov) {
+				// 		console.log('nv,ov')
+				// 		localStorage.setItem(this.DBKEY,JSON.stringify(this.todos));
+				// },
+				todos: {
+					handler(nv,ov) {
+						localStorage.setItem(this.DBKEY,JSON.stringify(this.todos));
+
+					},
+					deep: true
+				},
+			}
+		})
+
+	</script>
+</body>
+</html>
